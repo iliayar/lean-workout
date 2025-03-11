@@ -10,6 +10,8 @@ package "workout" where
 
 require "leanprover-community" / "mathlib"
 
+require batteries from git "https://github.com/leanprover/batteries" @ "main"
+
 @[default_target]
 lean_lib «Workout» where
   -- add any library configuration options here

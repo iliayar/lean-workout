@@ -1,4 +1,5 @@
 import Lean
+import Batteries
 
 import Workout.Logic
 
@@ -520,7 +521,18 @@ theorem stuck_is_wrong : stuck t -> wrong t := by
   have H := stucks_is_wrong Hs
   apply H
 
--- FIXME: Most of the below is probably well automated
+open Lean.Elab.Tactic in
+elab "wrong_normal_form" Hterm:ident : tactic => withMainContext do
+  let decl <- Lean.Meta.getLocalDeclFromUserName Hterm.getId
+  match_expr decl.type with
+  | eval_to _ arg => 
+    let argS <- Lean.Expr.toSyntax arg
+    evalTactic (<- `(tactic| exists $argS))
+  | _ =>
+    Lean.logInfo f!"Expected hypothesis in form a =>> b"
+
+example (_H : .AIsZero a =>> .AIsZero (.AFalse)) : (∃a, a = aexpr.AIsZero .AFalse) := by 
+  wrong_normal_form _H
 
 theorem trans_if_cond :
     (c =>> c') -> (<{ if c then t else f }> =>> <{ if c' then t else f }>) := by
@@ -552,8 +564,15 @@ theorem normal_form_exists_if :
   intros IHc IHt IHf
   have ⟨ c', ⟨ IHce, IHcnf ⟩ ⟩ := IHc
   have HIfE : (.AIf c t f) =>> (.AIf c' t f) := trans_if_cond IHce
-  cases c' with
-  | ATrue =>
+  cases c' <;> try {
+    wrong_normal_form HIfE
+    and_intros
+    . assumption
+    . intros Hnf'; let ⟨ _, Hnf'⟩ := Hnf'; cases Hnf';
+      case E_If t _ => apply IHcnf; exists t
+  }
+
+  case ATrue =>
     have ⟨ t', ⟨ IHte, IHtnf ⟩ ⟩ := IHt
     exists t'
     and_intros
@@ -563,7 +582,7 @@ theorem normal_form_exists_if :
                 (.E_Id (.AIf .ATrue t f) t (.E_IfTrue t f)) 
                 IHte))
     . assumption
-  | AFalse =>
+  case AFalse =>
     have ⟨ f', ⟨ IHfe, IHfnf ⟩ ⟩ := IHf
     exists f'
     and_intros
@@ -573,70 +592,6 @@ theorem normal_form_exists_if :
                 (.E_Id (.AIf .AFalse t f) f (.E_IfFalse t f)) 
                 IHfe))
     . assumption
-  | AZero =>
-    exists (.AIf .AZero t f)
-    and_intros
-    . exact (.E_Trans (.AIf c t f) (.AIf .AZero t f) (.AIf .AZero t f)
-              HIfE
-              (.E_Refl (.AIf .AZero t f)))
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_If _ _ _ _ contra => cases contra
-  | AWrong =>
-    exists (.AIf .AWrong t f)
-    and_intros
-    . exact (.E_Trans (.AIf c t f) (.AIf .AWrong t f) (.AIf .AWrong t f)
-              HIfE
-              (.E_Refl (.AIf .AWrong t f)))
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_If _ _ _ _ contra => cases contra
-  | AIf c₁ t₁ f₁ =>
-    exists (.AIf (.AIf c₁ t₁ f₁) t f)
-    and_intros
-    . exact (.E_Trans (.AIf c t f) (.AIf (.AIf c₁ t₁ f₁) t f) (.AIf (.AIf c₁ t₁ f₁) t f)
-              HIfE
-              (.E_Refl (.AIf (.AIf c₁ t₁ f₁) t f)))
-    . intros Hnf'
-      let ⟨ _, Hnf'⟩ := Hnf'
-      cases Hnf' with
-      | E_If _ c' _ =>
-        apply IHcnf
-        exists c'
-  | AIsZero a =>
-    exists (.AIf (.AIsZero a) t f)
-    and_intros
-    . exact (.E_Trans (.AIf c t f) (.AIf (.AIsZero a) t f) (.AIf (.AIsZero a) t f)
-              HIfE
-              (.E_Refl (.AIf (.AIsZero a) t f)))
-    . intros Hnf'
-      let ⟨ _, Hnf'⟩ := Hnf'
-      cases Hnf' with
-      | E_If _ c' _ =>
-        apply IHcnf
-        exists c'
-  | APred a =>
-    exists (.AIf (.APred a) t f)
-    and_intros
-    . exact (.E_Trans (.AIf c t f) (.AIf (.APred a) t f) (.AIf (.APred a) t f)
-              HIfE
-              (.E_Refl (.AIf (.APred a) t f)))
-    . intros Hnf'
-      let ⟨ _, Hnf'⟩ := Hnf'
-      cases Hnf' with
-      | E_If _ c' _ =>
-        apply IHcnf
-        exists c'
-  | ASucc a =>
-    exists (.AIf (.ASucc a) t f)
-    and_intros
-    . exact (.E_Trans (.AIf c t f) (.AIf (.ASucc a) t f) (.AIf (.ASucc a) t f)
-              HIfE
-              (.E_Refl (.AIf (.ASucc a) t f)))
-    . intros Hnf'
-      let ⟨ _, Hnf'⟩ := Hnf'
-      cases Hnf' with
-      | E_If _ c' _ =>
-        apply IHcnf
-        exists c'
 
 theorem nvalue_exm t : ¬ nvalue t ∨ nvalue t := by
   induction t with
@@ -657,15 +612,22 @@ theorem normal_form_exists_iszero :
   intros IHa
   have ⟨ a', ⟨ IHa, IHanf ⟩ ⟩ := IHa
   have HIsZeroE : (.AIsZero a) =>> (.AIsZero a') := trans_iszero IHa
-  cases a' with
-  | AZero =>
+  cases a' <;> try {
+    wrong_normal_form HIsZeroE
+    and_intros
+    . assumption
+    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra;
+      case E_IsZero _ t₁ contra => apply IHanf; exists t₁
+  }
+
+  case AZero =>
     exists .ATrue
     and_intros
     . exact (.E_Trans (.AIsZero a) (.AIsZero .AZero) (.ATrue)
               HIsZeroE
               (.E_Id (.AIsZero .AZero) (.ATrue) .E_IsZeroZero))
     . intros contra; have ⟨ _, contra ⟩ := contra; cases contra
-  | ASucc as =>
+  case ASucc as =>
     have HnvExm := nvalue_exm as
     cases HnvExm with
     | inl Hnv => 
@@ -688,42 +650,6 @@ theorem normal_form_exists_iszero :
                 HIsZeroE (.E_Id (.AIsZero (.ASucc as)) .AFalse
                   (.E_IsZeroSucc as Hnv)))
       . intros contra; rcases contra with ⟨ _, contra ⟩; cases contra
-  | ATrue =>
-    exists <{ iszero true }>
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_IsZero _ _ contra => cases contra
-  | AFalse =>
-    exists <{ iszero false }>
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_IsZero _ _ contra => cases contra
-  | AWrong =>
-    exists (.AIsZero .AWrong)
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_IsZero _ _ contra => cases contra
-  | AIf c t f =>
-    exists (.AIsZero (.AIf c t f))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_IsZero _ t₁ contra => apply IHanf; exists t₁
-  | AIsZero a =>
-    exists (.AIsZero (.AIsZero a))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_IsZero _ t₁ contra => apply IHanf; exists t₁
-  | APred a =>
-    exists (.AIsZero (.APred a))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_IsZero _ t₁ contra => apply IHanf; exists t₁
 
 theorem trans_pred :
     (a =>> a') -> (<{ pred a }> =>> <{ pred a' }>) := by
@@ -741,14 +667,20 @@ theorem normal_form_exists_pred :
   intros IHa
   have ⟨ a', ⟨ IHa, IHanf ⟩ ⟩ := IHa
   have HPredE : (.APred a) =>> (.APred a') := trans_pred IHa
-  cases a' with
-  | AZero =>
+  cases a' <;> try {
+    wrong_normal_form HPredE
+    and_intros
+    . assumption
+    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra;
+      case E_Pred _ t₁ contra => apply IHanf; exists t₁
+  }
+  case AZero =>
     exists <{ O }>
     and_intros
     . exact (.E_Trans (.APred a) (.APred .AZero) (.AZero)
               HPredE (.E_Id (.APred .AZero) .AZero (.E_PredZero)))
     . assumption
-  | ASucc as => 
+  case ASucc as => 
     have HnvExm := nvalue_exm as
     cases HnvExm with
     | inl Hnv =>
@@ -770,42 +702,6 @@ theorem normal_form_exists_pred :
                 HPredE (.E_Id (.APred (.ASucc as)) as (.E_PredSucc as Hnv)))
       . intros Hnf; apply IHanf; rcases Hnf with ⟨ t', Hnf ⟩; exists (.ASucc t')
         constructor; assumption
-  | ATrue =>
-    exists <{ pred true }>
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Pred _ _ contra => cases contra
-  | AFalse =>
-    exists <{ pred false }>
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Pred _ _ contra => cases contra
-  | AWrong =>
-    exists (.APred .AWrong)
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Pred _ _ contra => cases contra
-  | AIf c t f =>
-    exists (.APred (.AIf c t f))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Pred _ t₁ contra => apply IHanf; exists t₁
-  | AIsZero a =>
-    exists (.APred (.AIsZero a))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Pred _ t₁ contra => apply IHanf; exists t₁
-  | APred a =>
-    exists (.APred (.APred a))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Pred _ t₁ contra => apply IHanf; exists t₁
 
 theorem trans_succ :
     (a =>> a') -> (<{ succ a }> =>> <{ succ a' }>) := by
@@ -823,82 +719,40 @@ theorem normal_form_exists_succ :
   intros IHa
   have ⟨ a', ⟨ IHa, IHanf ⟩ ⟩ := IHa
   have HSuccE : (.ASucc a) =>> (.ASucc a') := trans_succ IHa
-  cases a' with
-  | ATrue =>
-    exists <{ succ true }>
+  cases a' <;> try {
+    wrong_normal_form HSuccE
     and_intros
     . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Succ _ _ contra => cases contra
-  | AZero =>
-    exists <{ succ O }>
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Succ _ _ contra => cases contra
-  | AFalse =>
-    exists <{ succ false }>
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Succ _ _ contra => cases contra
-  | AWrong =>
-    exists (.ASucc .AWrong)
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Succ _ _ contra => cases contra
-  | AIf c t f =>
-    exists (.ASucc (.AIf c t f))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Succ _ t₁ contra => apply IHanf; exists t₁
-  | AIsZero a =>
-    exists (.ASucc (.AIsZero a))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Succ _ t₁ contra => apply IHanf; exists t₁
-  | APred a =>
-    exists (.ASucc (.APred a))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Succ _ t₁ contra => apply IHanf; exists t₁
-  | ASucc a =>
-    exists (.ASucc (.ASucc a))
-    and_intros
-    . assumption
-    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra with
-      | E_Succ _ t₁ contra => apply IHanf; exists t₁
+    . intros contra; have ⟨ _, contra ⟩ := contra; cases contra;
+      case E_Succ _ t₁ contra => apply IHanf; exists t₁
+  }
 
 theorem normal_form_exists (t : aexpr) : ∃ t', (t =>> t') ∧ normal_form t' := by
-  induction t with
-  | ATrue => 
+  induction t
+  case ATrue => 
     exists .ATrue
     and_intros
-    . exact (.E_Refl .ATrue)
+    . refine (.E_Refl _)
     . intros contra; have ⟨ _, contra ⟩ := contra; cases contra
-  | AZero => 
+  case AZero => 
     exists .AZero
     and_intros
-    . exact (.E_Refl .AZero)
+    . refine (.E_Refl _)
     . intros contra; have ⟨ _, contra ⟩ := contra; cases contra
-  | AFalse => 
+  case AFalse => 
     exists .AFalse
     and_intros
-    . exact (.E_Refl .AFalse)
+    . refine (.E_Refl _)
     . intros contra; have ⟨ _, contra ⟩ := contra; cases contra
-  | AWrong => 
+  case AWrong => 
     exists .AWrong
     and_intros
-    . exact (.E_Refl .AWrong)
+    . refine (.E_Refl _)
     . intros contra; have ⟨ _, contra ⟩ := contra; cases contra
-  | AIsZero a IHa => apply normal_form_exists_iszero IHa
-  | APred a IHa => apply normal_form_exists_pred IHa
-  | ASucc a IHa => apply normal_form_exists_succ IHa
-  | AIf c t f IHc IHt IHf => apply normal_form_exists_if IHc IHt IHf
+  case AIsZero a IHa => apply normal_form_exists_iszero IHa
+  case APred a IHa => apply normal_form_exists_pred IHa
+  case ASucc a IHa => apply normal_form_exists_succ IHa
+  case AIf c t f IHc IHt IHf => apply normal_form_exists_if IHc IHt IHf
 
 theorem wrong_is_stuck : wrong t -> stuck t := by
   intros Hw
