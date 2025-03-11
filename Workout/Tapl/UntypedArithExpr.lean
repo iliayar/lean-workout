@@ -638,17 +638,18 @@ theorem normal_form_exists_if :
         apply IHcnf
         exists c'
 
-theorem succ_normal_nvalue_exm: normal_form (.ASucc t) -> ¬ nvalue t ∨ nvalue t := by
-  intros Hnf
+theorem nvalue_exm t : ¬ nvalue t ∨ nvalue t := by
   induction t with
-  | ASucc t IH =>
-    have Hnf' := normal_form_succ Hnf
-    specialize (IH Hnf')
-    cases IH with
-    | inl IH => left; intros Hv; cases Hv; contradiction
-    | inr IH => right; constructor; assumption
   | AZero => right; constructor
-  | _ => left; intros Hnv; cases Hnv
+  | ASucc t IH =>
+    cases IH with
+    | inl IH =>
+      left
+      intros contra
+      apply IH
+      cases contra; assumption
+    | inr IH => right; constructor; assumption
+  | _ => left; intros contra; cases contra
 
 theorem normal_form_exists_iszero :
   (∃ t', (a=>>t') ∧ normal_form t') ->
@@ -665,7 +666,7 @@ theorem normal_form_exists_iszero :
               (.E_Id (.AIsZero .AZero) (.ATrue) .E_IsZeroZero))
     . intros contra; have ⟨ _, contra ⟩ := contra; cases contra
   | ASucc as =>
-    have HnvExm := succ_normal_nvalue_exm IHanf
+    have HnvExm := nvalue_exm as
     cases HnvExm with
     | inl Hnv => 
       exists (.AIsZero (.ASucc as))
@@ -747,11 +748,11 @@ theorem normal_form_exists_pred :
     . exact (.E_Trans (.APred a) (.APred .AZero) (.AZero)
               HPredE (.E_Id (.APred .AZero) .AZero (.E_PredZero)))
     . assumption
-  | ASucc a' => 
-    have HnvExm := succ_normal_nvalue_exm IHanf
+  | ASucc as => 
+    have HnvExm := nvalue_exm as
     cases HnvExm with
     | inl Hnv =>
-      exists (.APred (.ASucc a'))
+      exists (.APred (.ASucc as))
       and_intros
       . apply HPredE
       . intros Hnf
@@ -763,10 +764,10 @@ theorem normal_form_exists_pred :
           apply IHanf
           exists t₁
     | inr Hnv =>
-      exists a'
+      exists as
       and_intros
-      . exact (.E_Trans (.APred a) (.APred (.ASucc a')) a'
-                HPredE (.E_Id (.APred (.ASucc a')) a' (.E_PredSucc a' Hnv)))
+      . exact (.E_Trans (.APred a) (.APred (.ASucc as)) as
+                HPredE (.E_Id (.APred (.ASucc as)) as (.E_PredSucc as Hnv)))
       . intros Hnf; apply IHanf; rcases Hnf with ⟨ t', Hnf ⟩; exists (.ASucc t')
         constructor; assumption
   | ATrue =>
