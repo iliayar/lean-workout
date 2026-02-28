@@ -4,3 +4,4 @@ theorem neg_impl : (P -> Q) -> (¬ Q -> ¬ P) := by
   apply HPQ
   apply HP
 
+

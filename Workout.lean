@@ -2,6 +2,7 @@
 -- Import modules here that should be built as part of the library.
 import Workout.Basic
 import Workout.Logic
+import Workout.Playground
 import Workout.Complexity.Basic
 
 import Workout.Tapl.UntypedArithExpr

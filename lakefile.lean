@@ -10,7 +10,7 @@ package "workout" where
 
 require "leanprover-community" / "mathlib"
 
-require batteries from git "https://github.com/leanprover/batteries" @ "main"
+require batteries from git "https://github.com/leanprover-community/batteries.git" @ "main"
 
 @[default_target]
 lean_lib «Workout» where
