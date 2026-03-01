@@ -1,0 +1,14 @@
+name = "lean-workout"
+version = "0.1.0"
+defaultTargets = ["Workout"]
+
+[leanOptions]
+linter.docPrime = false
+
+[[lean_lib]]
+name = "Workout"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+version = "git#v4.12.0"
