@@ -19,7 +19,8 @@ inductive Avl (k : Type) [Ord k] : BTree k -> Prop
     Avl k (BTree.branch l x r)
 
 def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
-  Avl k l -> Avl k r -> (hDiff l r <= 2) -> exists t' : BTree k, Avl k t' :=
+  Avl k l -> Avl k r -> (hDiff l r <= 2) -> 
+  ∃ t' : BTree k, (t'.height >= max l.height r.height ∧ t'.height <= max l.height r.height + 1) ∧ Avl k t' :=
   fun lAvl rAvl hH =>
     match diff : Int.ofNat (l.height) - Int.ofNat (r.height) with
     | -2 => match r, rAvl with
@@ -30,72 +31,30 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
           | -1 => by
               exists BTree.branch (BTree.branch l x rl) xr rr
 
+              split_ands
+              grind +locals
+              grind +locals
+
               repeat constructor
               repeat assumption
-              unfold hDiff at *
-              conv at diff => lhs; rhs; unfold BTree.height
-              have rr_rl : Int.ofNat rr.height = Int.ofNat rl.height + 1 := by
-                linarith
-              have l_max_rr_rl_2 : Int.ofNat l.height = Int.ofNat (max rr.height rl.height + 1) - 2 := by
-                simp_all
-                linarith
-              rewrite [l_max_rr_rl_2]
-              injection rr_rl with rr_rl
-              rewrite [rr_rl]
-              simp_all
-              have H₁ : Int.ofNat rl.height + 1 + 1 - 2 - Int.ofNat rl.height = 0 := by
-                grind_linarith
-              simp_all
+              grind +locals
               
               assumption
-              unfold hDiff at *
-              conv at diff => lhs; rhs; unfold BTree.height
-              conv => lhs; rhs; lhs; unfold BTree.height
-              simp_all
-              have rr_rl : Int.ofNat rr.height = Int.ofNat rl.height + 1 := by
-                grind_linarith
-              injection rr_rl with rr_rl
-              rewrite [rr_rl] at diff
-              rewrite [rr_rl]
-              simp_all
-              have l_rl : Int.ofNat l.height = Int.ofNat rl.height := by
-                grind_linarith
-              injection l_rl with l_rl
-              rewrite [l_rl]
-              simp_all
+              grind +locals
           | 0 => by
               exists BTree.branch (BTree.branch l x rl) xr rr
 
+              split_ands
+              grind +locals
+              grind +locals
+
               repeat constructor
               repeat assumption
-              unfold hDiff at *
-              conv at diff => lhs; rhs; unfold BTree.height
-              have rr_rl : Int.ofNat rr.height = Int.ofNat rl.height := by
-                linarith
-              have l_max_rr_rl_2 : Int.ofNat l.height = Int.ofNat (max rr.height rl.height + 1) - 2 := by
-                simp_all
-                linarith
-              rewrite [l_max_rr_rl_2]
-              injection rr_rl with rr_rl
-              rewrite [rr_rl]
-              simp_all
-              grind
+              grind +locals
               
               assumption
 
-              unfold hDiff at *
-              conv at diff => lhs; rhs; unfold BTree.height
-              conv => lhs; rhs; lhs; unfold BTree.height
-              simp_all
-              have rr_rl : Int.ofNat rr.height = Int.ofNat rl.height := by
-                grind_linarith
-              injection rr_rl with rr_rl
-              rewrite [rr_rl] at diff
-              rewrite [rr_rl]
-              simp_all
-              have l_rl : Int.ofNat l.height = Int.ofNat rl.height - 1 := by
-                grind_linarith
-              grind
+              grind +locals
           | 1 => 
             match rl, rlAvl with
               | BTree.leaf, _ => by
@@ -105,35 +64,20 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
               | BTree.branch rll xrl rlr, Avl.branch _ _ rllAvl rlrAvl rlhH => by
                   exists BTree.branch (BTree.branch l x rll) xrl (BTree.branch rlr xr rr);
 
+                  split_ands
+                  grind +locals
+                  grind +locals
+
                   repeat constructor
                   repeat assumption
-                  unfold hDiff at *
-                  conv at diff => lhs; rhs; unfold BTree.height; rhs; lhs; lhs; unfold BTree.height
-                  conv at rDiff => lhs; lhs; rhs; unfold BTree.height
-                  simp_all
-                  have rr_max_rll_rlr : Int.ofNat rr.height = Int.ofNat (max rll.height rlr.height) := by
-                    grind
-                  injection rr_max_rll_rlr with rr_max_rll_rlr
-                  rewrite [rr_max_rll_rlr] at diff
-                  simp_all
-                  grind
+                  grind +locals
 
                   constructor
                   assumption
 
                   assumption
-
-                  unfold hDiff at *
-                  conv at diff => lhs; rhs; unfold BTree.height; rhs; lhs; lhs; unfold BTree.height
-                  conv at rDiff => lhs; lhs; unfold BTree.height
-                  simp_all
-                  grind
-                  
-                  unfold hDiff at *
-                  conv at diff => lhs; rhs; unfold BTree.height; rhs; lhs; lhs; unfold BTree.height
-                  conv at rDiff => lhs; lhs; unfold BTree.height
-                  conv => lhs; unfold BTree.height
-                  grind
+                  grind +locals
+                  grind +locals
           | Int.negSucc (Nat.succ _) => by
               unfold hDiff at *
               rewrite [rDiff] at rhH
@@ -145,6 +89,10 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
     | -1 => by
         exists BTree.branch l x r
 
+        split_ands
+        grind +locals
+        grind +locals
+
         constructor
         assumption
         assumption
@@ -155,6 +103,10 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
     | 0 => by
         exists BTree.branch l x r
 
+        split_ands
+        grind +locals
+        grind +locals
+
         constructor
         assumption
         assumption
@@ -164,6 +116,10 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
         simp
     | 1 => by
         exists BTree.branch l x r
+
+        split_ands
+        grind +locals
+        grind +locals
 
         constructor
         assumption
@@ -187,70 +143,55 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
               | BTree.branch lrl lrx lrr, Avl.branch _ _ lrlAvl lrrAvl lrhH => by
                   exists BTree.branch (BTree.branch ll lx lrl) lrx (BTree.branch lrr x r);
 
+                  split_ands
+                  grind +locals
+                  grind +locals
+
                   repeat constructor
                   repeat assumption
 
-                  unfold hDiff at *
-                  conv at diff => lhs; lhs; unfold BTree.height; rhs; lhs; rhs; unfold BTree.height
-                  conv at lDiff => lhs; rhs; unfold BTree.height
-                  simp_all
-                  grind
+                  grind +locals
 
                   constructor
                   assumption
 
                   assumption
 
-                  unfold hDiff at *
-                  conv at diff => lhs; lhs; rhs; unfold BTree.height; lhs; rhs; unfold BTree.height
-                  conv at lDiff => lhs; rhs; unfold BTree.height
-                  simp_all
-                  grind
+                  grind +locals
 
-                  unfold hDiff at *
-                  conv at diff => lhs; lhs; rhs; unfold BTree.height; lhs; rhs; unfold BTree.height
-                  conv at lDiff => lhs; rhs; unfold BTree.height
-                  conv => lhs; unfold BTree.height
-                  simp_all
-                  grind
+                  grind +locals
           | 0 => by
               exists BTree.branch ll lx (BTree.branch lr x r);
 
+              split_ands
+              grind +locals
+              grind +locals
+
               constructor
               assumption
               constructor
               assumption
               assumption
               
-              unfold hDiff at *
-              conv at diff => lhs; lhs; unfold BTree.height
-              simp_all
-              grind
+              grind +locals
 
-              unfold hDiff at *
-              conv at diff => lhs; lhs; unfold BTree.height
-              conv => lhs; rhs; rhs; unfold BTree.height
-              simp_all
-              grind
+              grind +locals
           | 1 => by
               exists BTree.branch ll lx (BTree.branch lr x r);
 
+              split_ands
+              grind +locals
+              grind +locals
+
               constructor
               assumption
               constructor
               assumption
               assumption
               
-              unfold hDiff at *
-              conv at diff => lhs; lhs; unfold BTree.height
-              simp_all
-              grind
+              grind +locals
 
-              unfold hDiff at *
-              conv at diff => lhs; lhs; unfold BTree.height
-              conv => lhs; rhs; rhs; unfold BTree.height
-              simp_all
-              grind
+              grind +locals
           | Int.negSucc (Nat.succ _) => by
             unfold hDiff at *
             grind
@@ -266,18 +207,19 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
       rewrite [diff] at hH
       contradiction
 
-def insert [Ord k] (t : BTree k) (x : k) : Avl k t -> ∃ t' : BTree k, hDiff t t' <= 1 ∧ Avl k t' :=
+def insert [Ord k] (t : BTree k) (x : k) : Avl k t ->
+  ∃ t' : BTree k, (t'.height >= t.height ∧ t'.height <= t.height + 1) ∧ Avl k t' :=
   fun tAvl => match t'' : t, tAvl with
     | BTree.leaf, _ => by
         exists BTree.branch BTree.leaf x BTree.leaf
         
         split_ands
+        grind +locals
+        grind +locals
         constructor
         constructor
-        repeat assumption
-
-        unfold hDiff at *
-        grind
+        constructor
+        grind +locals
     | BTree.branch l y r, Avl.branch _ _ lAvl rAvl hH =>
         match compare x y with
           | Ordering.eq => by
@@ -285,23 +227,40 @@ def insert [Ord k] (t : BTree k) (x : k) : Avl k t -> ∃ t' : BTree k, hDiff t 
               split_ands
 
               rewrite [t'']
-              unfold hDiff
-              grind
+              grind +locals
+              grind +locals
 
               assumption
           | Ordering.lt => 
-            let ⟨l', ⟨t'diff, l'Avl⟩⟩ := insert l x lAvl; by 
-              let ⟨t', t'Avl⟩ := fixAvl l' y r l'Avl rAvl $ by
+            let ⟨l', ⟨l'diff, l'Avl⟩⟩ := insert l x lAvl; by 
+              let ⟨t', ⟨t'diff, t'Avl⟩⟩ := fixAvl l' y r l'Avl rAvl $ by
                 unfold hDiff at *
-                grind
+                grind +locals
               exists t'
 
               split_ands
-              unfold hDiff at *
-              conv => lhs; rhs; lhs; unfold BTree.height
-              simp_all
+              -- have H_lt : (l'.height <= r.height ∨ r.height <= l'.height) := by
+              --   grind
+              -- cases H_lt
+              -- have H_max : (max l'.height r.height = r.height) := by
+              --   grind
+              -- rw [H_max] at t'diff
+
 
               sorry
               sorry
-          | Ordering.gt => sorry
 
+              assumption
+          | Ordering.gt =>
+            let ⟨r', ⟨r'diff, r'Avl⟩⟩ := insert r x rAvl; by 
+              let ⟨t', ⟨t'diff, t'Avl⟩⟩ := fixAvl l y r' lAvl r'Avl $ by
+                unfold hDiff at *
+                grind +locals
+              exists t'
+
+              split_ands
+
+              sorry
+              sorry
+
+              assumption
