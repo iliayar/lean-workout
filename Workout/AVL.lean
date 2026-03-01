@@ -61,7 +61,39 @@ def fixAvl [LT k] (l : BTree k) (x : k) (r : BTree k) :
               injection l_rl with l_rl
               rewrite [l_rl]
               simp_all
-          | 0 => sorry
+          | 0 =>
+            let t' := BTree.branch (BTree.branch l x rl) xr rr;
+            Sigma.mk t' $ by
+              repeat constructor
+              repeat assumption
+              unfold hDiff at *
+              conv at diff => lhs; rhs; unfold BTree.height
+              have rr_rl : Int.ofNat rr.height = Int.ofNat rl.height := by
+                linarith
+              have l_max_rr_rl_2 : Int.ofNat l.height = Int.ofNat (max rr.height rl.height + 1) - 2 := by
+                simp_all
+                linarith
+              rewrite [l_max_rr_rl_2]
+              injection rr_rl with rr_rl
+              rewrite [rr_rl]
+              simp_all
+              grind
+              
+              assumption
+
+              unfold hDiff at *
+              conv at diff => lhs; rhs; unfold BTree.height
+              conv => lhs; rhs; lhs; unfold BTree.height
+              simp_all
+              have rr_rl : Int.ofNat rr.height = Int.ofNat rl.height := by
+                grind_linarith
+              injection rr_rl with rr_rl
+              rewrite [rr_rl] at diff
+              rewrite [rr_rl]
+              simp_all
+              have l_rl : Int.ofNat l.height = Int.ofNat rl.height - 1 := by
+                grind_linarith
+              grind
           | 1 => 
             match rl, rlAvl with
               | BTree.leaf, _ => by
@@ -123,7 +155,56 @@ def fixAvl [LT k] (l : BTree k) (x : k) (r : BTree k) :
         rewrite [diff] at *
         simp
       ))
-    | 2 => sorry
+    | 2 => match l, lAvl with
+      | BTree.leaf, _ => by
+        unfold hDiff at *
+        unfold BTree.height at diff
+        grind
+      | BTree.branch ll lx lr, Avl.branch _ _ llAvl lrAvl lhH =>
+        match lDiff : Int.ofNat ll.height - Int.ofNat lr.height with
+          | -1 =>
+            match lr, lrAvl with
+              | BTree.leaf, _ => by
+                unfold hDiff at *
+                simp_all
+              | BTree.branch lrl lrx lrr, Avl.branch _ _ lrlAvl lrrAvl lrhH =>
+                let t' := BTree.branch (BTree.branch ll lx lrl) lrx (BTree.branch lrr x r);
+                Sigma.mk t' $ by
+                  repeat constructor
+                  repeat assumption
+
+                  unfold hDiff at *
+                  conv at diff => lhs; lhs; unfold BTree.height; rhs; lhs; rhs; unfold BTree.height
+                  conv at lDiff => lhs; rhs; unfold BTree.height
+                  simp_all
+                  grind
+
+                  constructor
+                  assumption
+
+                  assumption
+
+                  unfold hDiff at *
+                  conv at diff => lhs; lhs; rhs; unfold BTree.height; lhs; rhs; unfold BTree.height
+                  conv at lDiff => lhs; rhs; unfold BTree.height
+                  simp_all
+                  grind
+
+                  unfold hDiff at *
+                  conv at diff => lhs; lhs; rhs; unfold BTree.height; lhs; rhs; unfold BTree.height
+                  conv at lDiff => lhs; rhs; unfold BTree.height
+                  conv => lhs; unfold BTree.height
+                  simp_all
+                  grind
+          | 0 =>
+            let t' := BTree.branch ll xl (BTree.branch )
+          | 1 => sorry
+          | Int.negSucc (Nat.succ _) => by
+            unfold hDiff at *
+            grind
+          | Int.ofNat (Nat.succ (Nat.succ _)) => by
+            unfold hDiff at *
+            grind
     | (Int.negSucc (Nat.succ (Nat.succ _))) => by
       unfold hDiff at *
       rewrite [diff] at hH
