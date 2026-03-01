@@ -3,6 +3,7 @@
 -- import Workout.Basic
 -- import Workout.Logic
 -- import Workout.Playground
+-- import Workout.Fp
 -- import Workout.Complexity.Basic
 --
 -- import Workout.Tapl.UntypedArithExpr
