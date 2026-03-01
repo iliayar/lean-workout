@@ -1,7 +1,5 @@
 import Mathlib
 
-universe u
-
 inductive BTree (k : Type) [Ord k] : Type
   | leaf : BTree k
   | branch (l : BTree k) (x : k) (r : BTree k) : BTree k
@@ -11,6 +9,7 @@ def BTree.height [Ord k] (t : BTree k) : Nat := match t with
   | branch l _ r => max l.height r.height + 1
 
 def hDiff [Ord k] (l : BTree k) (r : BTree k) := Int.natAbs $ Int.ofNat l.height - Int.ofNat r.height
+def hDiff' [Ord k] (l : BTree k) (r : BTree k) := Int.ofNat l.height - Int.ofNat r.height
 
 inductive Avl (k : Type) [Ord k] : BTree k -> Prop
   | leaf : Avl k BTree.leaf
@@ -20,19 +19,21 @@ inductive Avl (k : Type) [Ord k] : BTree k -> Prop
 
 def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
   Avl k l -> Avl k r -> (hDiff l r <= 2) -> 
-  ∃ t' : BTree k, (t'.height >= max l.height r.height ∧ t'.height <= max l.height r.height + 1) ∧ Avl k t' :=
+  ∃ t' : BTree k, (
+    hDiff' l r = -2 ∧ t'.height >= r.height ∧ t'.height <= r.height + 1 ∨ 
+    hDiff' l r = 2 ∧ t'.height >= l.height ∧ t'.height <= l.height + 1 ∨ 
+    hDiff l r <= 1 ∧ t'.height = max l.height r.height + 1
+  ) ∧ Avl k t' :=
   fun lAvl rAvl hH =>
-    match diff : Int.ofNat (l.height) - Int.ofNat (r.height) with
+    match diff : hDiff' l r with
     | -2 => match r, rAvl with
-      | BTree.leaf, _ => by
-          contradiction
+      | BTree.leaf, _ => by contradiction
       | BTree.branch rl xr rr, Avl.branch _ _ rlAvl rrAvl rhH =>
-        match rDiff : Int.ofNat rl.height - Int.ofNat rr.height with
+        match rDiff : hDiff' rl rr with
           | -1 => by
               exists BTree.branch (BTree.branch l x rl) xr rr
 
               split_ands
-              grind +locals
               grind +locals
 
               repeat constructor
@@ -46,7 +47,6 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
 
               split_ands
               grind +locals
-              grind +locals
 
               repeat constructor
               repeat assumption
@@ -57,15 +57,11 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
               grind +locals
           | 1 => 
             match rl, rlAvl with
-              | BTree.leaf, _ => by
-                unfold hDiff at *
-                simp_all
-                grind_linarith
+              | BTree.leaf, _ => by grind +locals
               | BTree.branch rll xrl rlr, Avl.branch _ _ rllAvl rlrAvl rlhH => by
                   exists BTree.branch (BTree.branch l x rll) xrl (BTree.branch rlr xr rr);
 
                   split_ands
-                  grind +locals
                   grind +locals
 
                   repeat constructor
@@ -78,73 +74,52 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
                   assumption
                   grind +locals
                   grind +locals
-          | Int.negSucc (Nat.succ _) => by
-              unfold hDiff at *
-              rewrite [rDiff] at rhH
-              contradiction
-          | Int.ofNat (Nat.succ (Nat.succ _)) => by
-              unfold hDiff at *
-              rewrite [rDiff] at rhH
-              contradiction
+          | Int.negSucc (Nat.succ _) => by grind +locals
+          | Int.ofNat (Nat.succ (Nat.succ _)) => by grind +locals
     | -1 => by
         exists BTree.branch l x r
 
         split_ands
         grind +locals
-        grind +locals
 
         constructor
         assumption
         assumption
 
-        unfold hDiff at *
-        rewrite [diff] at *
-        simp
+        grind +locals
     | 0 => by
         exists BTree.branch l x r
 
         split_ands
         grind +locals
-        grind +locals
 
         constructor
         assumption
         assumption
 
-        unfold hDiff at *
-        rewrite [diff] at *
-        simp
+        grind +locals
     | 1 => by
         exists BTree.branch l x r
 
         split_ands
         grind +locals
-        grind +locals
 
         constructor
         assumption
         assumption
 
-        unfold hDiff at *
-        rewrite [diff] at *
-        simp
+        grind +locals
     | 2 => match l, lAvl with
-      | BTree.leaf, _ => by
-        unfold hDiff at *
-        unfold BTree.height at diff
-        grind
+      | BTree.leaf, _ => by grind +locals
       | BTree.branch ll lx lr, Avl.branch _ _ llAvl lrAvl lhH =>
-        match lDiff : Int.ofNat ll.height - Int.ofNat lr.height with
+        match lDiff : hDiff' ll lr with
           | -1 =>
             match lr, lrAvl with
-              | BTree.leaf, _ => by
-                unfold hDiff at *
-                simp_all
+              | BTree.leaf, _ => by grind +locals
               | BTree.branch lrl lrx lrr, Avl.branch _ _ lrlAvl lrrAvl lrhH => by
                   exists BTree.branch (BTree.branch ll lx lrl) lrx (BTree.branch lrr x r);
 
                   split_ands
-                  grind +locals
                   grind +locals
 
                   repeat constructor
@@ -164,7 +139,6 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
               exists BTree.branch ll lx (BTree.branch lr x r);
 
               split_ands
-              grind +locals
               grind +locals
 
               constructor
@@ -181,7 +155,6 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
 
               split_ands
               grind +locals
-              grind +locals
 
               constructor
               assumption
@@ -192,23 +165,13 @@ def fixAvl [Ord k] (l : BTree k) (x : k) (r : BTree k) :
               grind +locals
 
               grind +locals
-          | Int.negSucc (Nat.succ _) => by
-            unfold hDiff at *
-            grind
-          | Int.ofNat (Nat.succ (Nat.succ _)) => by
-            unfold hDiff at *
-            grind
-    | (Int.negSucc (Nat.succ (Nat.succ _))) => by
-      unfold hDiff at *
-      rewrite [diff] at hH
-      contradiction
-    | (Int.ofNat (Nat.succ (Nat.succ (Nat.succ _)))) => by
-      unfold hDiff at *
-      rewrite [diff] at hH
-      contradiction
+          | Int.negSucc (Nat.succ _) => by grind +locals
+          | Int.ofNat (Nat.succ (Nat.succ _)) => by grind +locals
+    | (Int.negSucc (Nat.succ (Nat.succ _))) => by grind +locals
+    | (Int.ofNat (Nat.succ (Nat.succ (Nat.succ _)))) => by grind +locals
 
-def insert [Ord k] (t : BTree k) (x : k) : Avl k t ->
-  ∃ t' : BTree k, (t'.height >= t.height ∧ t'.height <= t.height + 1) ∧ Avl k t' :=
+def insert [Ord k] (t : BTree k) (x : k) :
+  Avl k t -> ∃ t' : BTree k, (t'.height >= t.height ∧ t'.height <= t.height + 1) ∧ Avl k t' :=
   fun tAvl => match t'' : t, tAvl with
     | BTree.leaf, _ => by
         exists BTree.branch BTree.leaf x BTree.leaf
@@ -239,17 +202,8 @@ def insert [Ord k] (t : BTree k) (x : k) : Avl k t ->
               exists t'
 
               split_ands
-              -- have H_lt : (l'.height <= r.height ∨ r.height <= l'.height) := by
-              --   grind
-              -- cases H_lt
-              -- have H_max : (max l'.height r.height = r.height) := by
-              --   grind
-              -- rw [H_max] at t'diff
-
-
-              sorry
-              sorry
-
+              grind +locals
+              grind +locals
               assumption
           | Ordering.gt =>
             let ⟨r', ⟨r'diff, r'Avl⟩⟩ := insert r x rAvl; by 
@@ -259,8 +213,6 @@ def insert [Ord k] (t : BTree k) (x : k) : Avl k t ->
               exists t'
 
               split_ands
-
-              sorry
-              sorry
-
+              grind +locals
+              grind +locals
               assumption
