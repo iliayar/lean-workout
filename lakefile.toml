@@ -2,9 +2,6 @@ name = "lean-workout"
 version = "0.1.0"
 defaultTargets = ["Workout"]
 
-[leanOptions]
-linter.docPrime = false
-
 [[lean_lib]]
 name = "Workout"
 
